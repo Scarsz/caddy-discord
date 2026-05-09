@@ -1,4 +1,4 @@
-module github.com/enum-gg/caddy-discord
+module github.com/Scarsz/caddy-discord
 
 go 1.25
 
