@@ -103,3 +103,41 @@ http://localhost:8080 {
 ```
 xcaddy build --with github.com/enum-gg/caddy-discord=./
 ```
+
+## Troubleshooting
+
+### Enabling Debug Logging
+
+caddy-discord emits debug messages through Caddy's built-in logging system. To see them, enable debug mode in your `Caddyfile` [global options block](https://caddyserver.com/docs/caddyfile/options#debug):
+
+```caddyfile
+{
+    debug <-----
+
+    discord {
+        client_id     ...
+        client_secret ...
+        redirect      ...
+    }
+}
+```
+
+The `debug` directive lowers Caddy's default log level to `DEBUG`, which causes caddy-discord to emit a full trace of every Discord API call: the request URL, all request and response headers, the response status code, and the raw response body. This is the primary tool for diagnosing authentication failures.
+
+### Log Levels
+
+| Level   | What is logged                                                                                               |
+|---------|--------------------------------------------------------------------------------------------------------------|
+| `DEBUG` | Every outgoing Discord API request and its full response (URL, headers, body)                                |
+| `INFO`  | Access denials (user authenticated but failed authorization rules like user ID, guild member, roles)         |
+| `WARN`  | Recoverable issues: invalid/expired session cookie, guild membership fetch failures for member & role checks |
+| `ERROR` | Internal failures: OAuth code exchange errors, token generation failures, unexpected Discord API responses   |
+
+### Common Issues
+
+#### Guild or role rules never match
+
+A `WARN` log entry with message `failed to fetch guild membership, skipping rule` means Discord returned a non-200 response when checking guild membership. The `discord_message` and `discord_code` fields in the log will identify the exact Discord API error. Verify the guild ID in your realm config.
+
+#### `Internal Error` response at the callback URL
+A `DEBUG`-level `Discord API response` log will show the raw response body. Cross-reference `discord_code` values against the [Discord API error codes](https://discord.com/developers/docs/topics/opcodes-and-status-codes#json). Frequently will be the result of temporary Discord API outage.
