@@ -11,6 +11,7 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp/caddyauth"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -53,6 +54,7 @@ type ProtectorPlugin struct {
 	flowTokenParser   FlowTokenParserSignature
 	Realm             string
 	cookie            CookieNamer
+	logger            *zap.Logger
 }
 
 // Authenticate implements caddyhttp.MiddlewareHandler.
@@ -89,7 +91,16 @@ func (p *ProtectorPlugin) Authenticate(w http.ResponseWriter, r *http.Request) (
 	if existingSession != nil {
 		claims, err := p.authedTokenParser(existingSession.Value)
 		if err != nil {
+			p.logger.Warn("failed to parse session cookie", zap.String("realm", p.Realm), zap.Error(err))
 			return caddyauth.User{}, false, err
+		}
+
+		if !claims.Authorised {
+			p.logger.Info("access denied: user not authorized for realm",
+				zap.String("user_id", claims.Subject),
+				zap.String("username", claims.Username),
+				zap.String("realm", p.Realm),
+			)
 		}
 
 		return caddyauth.User{
@@ -115,7 +126,7 @@ func (p *ProtectorPlugin) Authenticate(w http.ResponseWriter, r *http.Request) (
 	token := NewAuthFlowToken(backToURL.String(), p.Realm, exp)
 	signedToken, err := p.tokenSigner(token)
 	if err != nil {
-		// Unable to generate JWT
+		p.logger.Error("failed to generate OAuth flow token", zap.String("realm", p.Realm), zap.Error(err))
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return caddyauth.User{}, false, err
 	}
@@ -127,6 +138,8 @@ func (p *ProtectorPlugin) Authenticate(w http.ResponseWriter, r *http.Request) (
 }
 
 func (p *ProtectorPlugin) Provision(ctx caddy.Context) error {
+	p.logger = ctx.Logger(p)
+
 	ctxApp, _ := ctx.App(moduleName)
 	app := ctxApp.(*DiscordPortalApp)
 	p.cookie = CookieName(app.ExecutionKey)
