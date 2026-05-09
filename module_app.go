@@ -80,8 +80,9 @@ func (DiscordPortalApp) CaddyModule() caddy.ModuleInfo {
 }
 
 func (d *DiscordPortalApp) Provision(_ caddy.Context) error {
-	// Discord App ID is used as entropy for JWT signing keys.
-	d.Key = hex.EncodeToString(randomness(64))
+	if d.Key == "" {
+		d.Key = hex.EncodeToString(randomness(64))
+	}
 	d.ExecutionKey = hashString512(d.Key)
 
 	return nil

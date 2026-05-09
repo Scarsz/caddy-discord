@@ -33,6 +33,13 @@ func parseCaddyfileGlobalOption(d *caddyfile.Dispenser, _ any) (any, error) {
 				if d.NextArg() {
 					return nil, d.ArgErr()
 				}
+			case "key":
+				if d.NextArg() {
+					dpApp.Key = d.Val()
+				}
+				if d.NextArg() {
+					return nil, d.ArgErr()
+				}
 			case "realm":
 				realmBuilder := NewRealmBuilder()
 
