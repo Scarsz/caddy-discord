@@ -8,18 +8,11 @@ import (
 
 func getBody[T any](r *http.Response) (*T, error) {
 	body, err := io.ReadAll(r.Body)
-
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := unmarshalAny[T](body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return unmarshalAny[T](body)
 }
 
 func unmarshalAny[T any](bytes []byte) (*T, error) {

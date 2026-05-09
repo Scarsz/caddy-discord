@@ -130,7 +130,7 @@ func (d DiscordAuthPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request, _ c
 		return err
 	}
 
-	client := discord.NewClientWrapper(d.OAuth.Client(ctx, tok))
+	client := discord.NewClientWrapper(d.OAuth.Client(ctx, tok), d.logger)
 
 	allowed := false
 
@@ -142,6 +142,9 @@ func (d DiscordAuthPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request, _ c
 	}
 
 	for _, rule := range realm.Identifiers {
+		d.logger.Debug("request",
+			zap.String("realm", realm.Ref),
+		)
 		if ResourceRequiresGuild(rule.Resource) {
 			guildMembership, err := client.FetchGuildMembership(rule.GuildID)
 			if err != nil {
