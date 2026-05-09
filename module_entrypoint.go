@@ -46,7 +46,7 @@ func parseCaddyfileHandlerDirective2(h httpcaddyfile.Helper) (caddyhttp.Middlewa
 // Discord's OAuth flow is used for identity using your
 // own Discord developer application.
 //
-// See an example Caddyfile https://github.com/enum-gg/caddy-discord#caddyfile-example
+// See an example Caddyfile https://github.com/Scarsz/caddy-discord#caddyfile-example
 type ProtectorPlugin struct {
 	OAuthConfig       *oauth2.Config
 	tokenSigner       TokenSignerSignature

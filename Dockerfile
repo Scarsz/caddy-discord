@@ -1,7 +1,7 @@
 FROM caddy:2.6.4-builder AS builder
 
 RUN xcaddy build \
-    --with github.com/enum-gg/caddy-discord
+    --with github.com/Scarsz/caddy-discord
 
 FROM caddy:2.6.4
 

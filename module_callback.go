@@ -7,11 +7,11 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/Scarsz/caddy-discord/internal/discord"
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
-	"github.com/enum-gg/caddy-discord/internal/discord"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -38,7 +38,7 @@ func parseCaddyfileHandlerDirective(h httpcaddyfile.Helper) (caddyhttp.Middlewar
 // layer based on a Discord identity.
 //
 // See https://caddyserver.com/docs/modules/http.authentication.providers.discord
-// or https://github.com/enum-gg/caddy-discord
+// or https://github.com/Scarsz/caddy-discord
 type DiscordAuthPlugin struct {
 	Configuration   []string
 	OAuth           *oauth2.Config

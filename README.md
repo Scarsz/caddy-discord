@@ -13,7 +13,7 @@ This package contains a module allowing authorization in Caddy based on a Discor
 > [!IMPORTANT]
 > As of 22nd September 2025 versions v1.2.0 and below will fail with guild/role-based rules due to Discord API changes. Update to v1.2.1 or higher to solve. 
 
-Licensed under [_GNU Affero General Public License v3.0_](https://github.com/enum-gg/caddy-discord/blob/main/LICENSE.md)
+Licensed under [_GNU Affero General Public License v3.0_](https://github.com/Scarsz/caddy-discord/blob/main/LICENSE.md)
 <br><i>Logo by [@AutonomousCat](https://github.com/AutonomousCat/)</i>
 
 ---
@@ -45,12 +45,12 @@ Loosely inspired from [caddy-security's Discord OAuth2 module](https://authp.git
 
 # Install
 
-[**Download Latest Version**](https://github.com/enum-gg/caddy-discord/releases)
+[**Download Latest Version**](https://github.com/Scarsz/caddy-discord/releases)
 
 1. Download caddy + caddy-discord
     - Using released binaries
     - Build yourself using `xcaddy`
-      - `xcaddy build --with github.com/enum-gg/caddy-discord`
+      - `xcaddy build --with github.com/Scarsz/caddy-discord`
 2. Create Discord Application ([Discord Developer Portal](https://discord.com/developers/applications))
     - New Application
     - OAuth2
@@ -101,7 +101,7 @@ http://localhost:8080 {
 
 ## Building
 ```
-xcaddy build --with github.com/enum-gg/caddy-discord=./
+xcaddy build --with github.com/Scarsz/caddy-discord=./
 ```
 
 ## Troubleshooting

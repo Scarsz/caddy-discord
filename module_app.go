@@ -3,6 +3,7 @@ package caddydiscord
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"golang.org/x/oauth2"
@@ -33,7 +34,7 @@ func init() {
 // Discord's OAuth flow is used for identity using your
 // own Discord developer application.
 //
-// See an example Caddyfile https://github.com/enum-gg/caddy-discord#caddyfile-example
+// See an example Caddyfile https://github.com/Scarsz/caddy-discord#caddyfile-example
 type DiscordPortalApp struct {
 	// ClientID is the "Client ID" from your Discord Application OAuth information
 	ClientID string `json:"clientID"`
