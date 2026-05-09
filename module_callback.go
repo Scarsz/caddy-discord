@@ -3,15 +3,17 @@ package caddydiscord
 import (
 	"context"
 	"encoding/hex"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/enum-gg/caddy-discord/internal/discord"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 var (
@@ -45,6 +47,7 @@ type DiscordAuthPlugin struct {
 	tokenSigner     TokenSignerSignature
 	flowTokenParser FlowTokenParserSignature
 	cookie          CookieNamer
+	logger          *zap.Logger
 }
 
 func (DiscordAuthPlugin) CaddyModule() caddy.ModuleInfo {
@@ -55,6 +58,8 @@ func (DiscordAuthPlugin) CaddyModule() caddy.ModuleInfo {
 }
 
 func (s *DiscordAuthPlugin) Provision(ctx caddy.Context) error {
+	s.logger = ctx.Logger(s)
+
 	ctxApp, _ := ctx.App(moduleName)
 	app := ctxApp.(*DiscordPortalApp)
 
@@ -107,40 +112,47 @@ func (d DiscordAuthPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request, _ c
 
 	token, err := d.flowTokenParser(q.Get("state"))
 	if err != nil {
-		// Unable to find session. Using load balancers? Server was restarted?
+		d.logger.Error("failed to parse OAuth state parameter; session lost (load balancer or server restart?)", zap.Error(err))
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return err
 	}
 
 	realm := d.Realms.ByName(token.Realm)
 	if realm == nil {
-		// Unable to resolve realm
+		d.logger.Error("realm not found", zap.String("realm", token.Realm))
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return err
 	}
 
 	tok, err := d.OAuth.Exchange(ctx, q.Get("code"))
 	if err != nil {
+		d.logger.Error("OAuth authorization code exchange failed", zap.String("realm", token.Realm), zap.Error(err))
 		return err
 	}
 
-	client := discord.NewClientWrapper(d.OAuth.Client(ctx, tok))
+	client := discord.NewClientWrapper(d.OAuth.Client(ctx, tok), d.logger)
 
 	allowed := false
 
 	identity, err := client.FetchCurrentUser()
 	if err != nil || len(identity.ID) == 0 {
-		// Unable to resolve realm
+		d.logger.Error("failed to fetch Discord user identity", zap.String("realm", realm.Ref), zap.Error(err))
 		http.Error(w, "Failed to resolve Discord User", http.StatusInternalServerError)
 		return err
 	}
 
 	for _, rule := range realm.Identifiers {
+		d.logger.Debug("request", zap.String("realm", realm.Ref))
 		if ResourceRequiresGuild(rule.Resource) {
 			guildMembership, err := client.FetchGuildMembership(rule.GuildID)
 			if err != nil {
+				d.logger.Debug("failed to fetch guild membership, skipping rule",
+					zap.String("user_id", identity.ID),
+					zap.String("guild_id", rule.GuildID),
+					zap.String("realm", realm.Ref),
+					zap.Error(err),
+				)
 				continue
-				// TODO: check error type - probably not a member of guild...
 			}
 
 			if rule.Resource == DiscordRoleRule {
@@ -150,6 +162,14 @@ func (d DiscordAuthPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request, _ c
 					// Authorised based on role whitelist.
 					allowed = true
 					break
+				} else {
+					d.logger.Debug("authenticated member does not have role",
+						zap.String("member_id", identity.ID),
+						zap.String("guild_id", rule.GuildID),
+						zap.Strings("member_roles", guildMembership.Roles),
+						zap.String("rule", rule.Identifier),
+						zap.String("realm", realm.Ref),
+					)
 				}
 			}
 
@@ -168,10 +188,7 @@ func (d DiscordAuthPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request, _ c
 					break
 				}
 			}
-		} else if rule.Resource == DiscordUserRule && rule.Wildcard == false && rule.Identifier == identity.ID {
-			allowed = true
-			break
-		} else if rule.Resource == DiscordUserRule && rule.Wildcard == true {
+		} else if rule.Resource == DiscordUserRule && (rule.Wildcard || rule.Identifier == identity.ID) {
 			allowed = true
 			break
 		}
@@ -184,12 +201,21 @@ func (d DiscordAuthPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request, _ c
 	// in-case of Discord role change, etc.
 	if !allowed {
 		expiration = time.Now().Add(time.Minute * 3)
+		d.logger.Info("access denied: user does not meet any authorization rules",
+			zap.String("user_id", identity.ID),
+			zap.String("username", identity.Username),
+			zap.String("realm", realm.Ref),
+		)
 	}
 
 	authedToken := NewAuthenticatedToken(*identity, realm.Ref, expiration, allowed)
 	signedToken, err := d.tokenSigner(authedToken)
 	if err != nil {
-		// Unable to generate JWT
+		d.logger.Error("failed to generate authenticated token",
+			zap.String("user_id", identity.ID),
+			zap.String("realm", realm.Ref),
+			zap.Error(err),
+		)
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return err
 	}
